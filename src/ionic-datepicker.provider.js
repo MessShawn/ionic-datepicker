@@ -27,6 +27,7 @@ angular.module('ionic-datepicker.provider', [])
       var $scope = $rootScope.$new();
       $scope.today = resetHMSM(new Date()).getTime();
       $scope.disabledDates = [];
+      $scope.time = {};
 
       //Reset the hours, minutes, seconds and milli seconds
       function resetHMSM(currentDate) {
@@ -35,6 +36,83 @@ angular.module('ionic-datepicker.provider', [])
         currentDate.setSeconds(0);
         currentDate.setMilliseconds(0);
         return currentDate;
+      }
+
+      //Increasing the hours
+      $scope.increaseHours = function () {
+        $scope.time.hours = Number($scope.time.hours);
+        if ($scope.mainObj.datetime.format == 12) {
+          if ($scope.time.hours != 12) {
+            $scope.time.hours += 1;
+          } else {
+            $scope.time.hours = 1;
+          }
+        }
+        if ($scope.mainObj.datetime.format == 24) {
+          $scope.time.hours = ($scope.time.hours + 1) % 24;
+        }
+        $scope.time.hours = ($scope.time.hours < 10) ? ('0' + $scope.time.hours) : $scope.time.hours;
+      };
+
+      //Decreasing the hours
+      $scope.decreaseHours = function () {
+        $scope.time.hours = Number($scope.time.hours);
+        if ($scope.mainObj.datetime.format == 12) {
+          if ($scope.time.hours > 1) {
+            $scope.time.hours -= 1;
+          } else {
+            $scope.time.hours = 12;
+          }
+        }
+        if ($scope.mainObj.datetime.format == 24) {
+          $scope.time.hours = ($scope.time.hours + 23) % 24;
+        }
+        $scope.time.hours = ($scope.time.hours < 10) ? ('0' + $scope.time.hours) : $scope.time.hours;
+      };
+
+      //Increasing the minutes
+      $scope.increaseMinutes = function () {
+        $scope.time.minutes = Number($scope.time.minutes);
+        $scope.time.minutes = ($scope.time.minutes + $scope.mainObj.datetime.step) % 60;
+        $scope.time.minutes = ($scope.time.minutes < 10) ? ('0' + $scope.time.minutes) : $scope.time.minutes;
+      };
+
+      //Decreasing the minutes
+      $scope.decreaseMinutes = function () {
+        $scope.time.minutes = Number($scope.time.minutes);
+        $scope.time.minutes = ($scope.time.minutes + (60 - $scope.mainObj.datetime.step)) % 60;
+        $scope.time.minutes = ($scope.time.minutes < 10) ? ('0' + $scope.time.minutes) : $scope.time.minutes;
+      };
+
+      //Changing the meridian
+      $scope.changeMeridian = function () {
+        $scope.time.meridian = ($scope.time.meridian === "AM") ? "PM" : "AM";
+      };
+
+      function setMinSecs(ipTime, format) {
+        $scope.time.hours = ipTime / (60 * 60);
+
+        var rem = ipTime % (60 * 60);
+        if (format == 12) {
+          if ($scope.time.hours > 12) {
+            $scope.time.hours -= 12;
+            $scope.time.meridian = 'PM';
+          } else {
+            $scope.time.meridian = 'AM';
+          }
+        }
+        $scope.time.minutes = rem / 60;
+
+        $scope.time.hours = $scope.time.hours.toFixed(0);
+        $scope.time.minutes = $scope.time.minutes.toFixed(0);
+
+        if ($scope.time.hours.toString().length == 1) {
+          $scope.time.hours = '0' + $scope.time.hours;
+        }
+        if ($scope.time.minutes.toString().length == 1) {
+          $scope.time.minutes = '0' + $scope.time.minutes;
+        }
+        $scope.time.format = $scope.mainObj.datetime.format;
       }
 
       //Previous month
@@ -229,17 +307,22 @@ angular.module('ionic-datepicker.provider', [])
         if (ipObj.disableWeekdays && config.disableWeekdays) {
           $scope.mainObj.disableWeekdays = ipObj.disableWeekdays.concat(config.disableWeekdays);
         }
+
+        if ($scope.mainObj.datetime) {
+            setMinSecs($scope.mainObj.datetime.inputTime, $scope.mainObj.datetime.format);
+        }
+
         setInitialObj($scope.mainObj);
 
-        if (!$scope.mainObj.closeOnSelect) {
-          buttons = [{
-            text: $scope.mainObj.setLabel,
-            type: 'button_set',
-            onTap: function (e) {
-              $scope.mainObj.callback($scope.selctedDateEpoch);
-            }
-          }];
-        }
+        // if (!$scope.mainObj.closeOnSelect) {
+        //   buttons = [{
+        //     text: $scope.mainObj.setLabel,
+        //     type: 'button_set',
+        //     onTap: function (e) {
+        //       $scope.mainObj.callback($scope.selctedDateEpoch);
+        //     }
+        //   }];
+        // }
 
         if ($scope.mainObj.showTodayButton) {
           buttons.push({
@@ -256,21 +339,34 @@ angular.module('ionic-datepicker.provider', [])
           });
         }
 
-        buttons.push({
-          text: $scope.mainObj.closeLabel,
-          type: 'button_close',
-          onTap: function (e) {
-            console.log('ionic-datepicker popup closed.');
-          }
-        });
+        $scope.set2today = function () {
+            var today = new Date();
+            refreshDateList(new Date());
+            $scope.selctedDateEpoch = resetHMSM(today).getTime();
+            if (!$scope.mainObj.closeOnSelect) {
+              e.preventDefault();
+            }
+        };
+
+        // buttons.push({
+        //   text: $scope.mainObj.closeLabel,
+        //   type: 'button_close',
+        //   onTap: function (e) {
+        //     console.log('ionic-datepicker popup closed.');
+        //   }
+        // });
 
         if ($scope.mainObj.templateType.toLowerCase() == 'popup') {
           $scope.popup = $ionicPopup.show({
             templateUrl: 'ionic-datepicker-popup.html',
             scope: $scope,
-            cssClass: 'ionic_datepicker_popup',
-            buttons: buttons
+            cssClass: 'ionic_datepicker_popup'
           });
+
+          $scope.closeIonicDatePickerPopup = function () {
+              $scope.popup.close();
+          };
+
         } else {
           openModal();
         }
